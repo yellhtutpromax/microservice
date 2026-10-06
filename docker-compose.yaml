@@ -46,6 +46,27 @@ services:
       - api
     restart: unless-stopped
 
+  nginx:
+    build:
+      context: ./nginx
+      dockerfile: Dockerfile
+    ports:
+      - "8080:8080"
+    environment:
+      PORT: "8080"
+      API_HOST: api
+      API_PORT: "4000"
+
+      FRONTEND_HOST: frontend
+      FRONTEND_PORT: "3000"
+
+    networks:
+      - mern-app
+    depends_on:
+      - api
+      - frontend
+    restart: unless-stopped
+
 volumes:
   mongodb_data:
 

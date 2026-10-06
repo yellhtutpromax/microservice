@@ -1,0 +1,60 @@
+# Rendered by the official nginx image at container startup.
+# Resolve Railway private hostnames again after service redeployments.
+resolver ${NGINX_LOCAL_RESOLVERS} valid=10s;
+resolver_timeout 5s;
+
+upstream backend {
+    zone backend 64k;
+    server ${API_HOST}:${API_PORT} resolve;
+}
+
+upstream frontend_app {
+    zone frontend_app 64k;
+    server ${FRONTEND_HOST}:${FRONTEND_PORT} resolve;
+}
+
+map $http_upgrade $connection_upgrade {
+    default upgrade;
+    '' close;
+}
+
+# Railway terminates HTTPS before forwarding requests to this container.
+map $http_x_forwarded_proto $original_scheme {
+    default $scheme;
+    https https;
+    http http;
+}
+
+server {
+    listen ${PORT};
+    server_name _;
+    client_max_body_size 10m;
+
+    proxy_http_version 1.1;
+    proxy_set_header Host $host;
+    proxy_set_header X-Forwarded-Host $host;
+    proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+    proxy_set_header X-Forwarded-Proto $original_scheme;
+    proxy_set_header Upgrade $http_upgrade;
+    proxy_set_header Connection $connection_upgrade;
+    proxy_buffering off;
+
+    # Proxy process liveness only; does not check the API or database.
+    location = /_proxy/health {
+        default_type text/plain;
+        return 200 "nginx ok\n";
+    }
+
+    # Keep the original /api prefix and query string.
+    location = /api {
+        proxy_pass http://backend;
+    }
+
+    location /api/ {
+        proxy_pass http://backend;
+    }
+
+    location / {
+        proxy_pass http://frontend_app;
+    }
+}
