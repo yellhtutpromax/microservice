@@ -1,0 +1,50 @@
+
+
+# ==================================
+# BACKEND — node_api (Express)
+# ==================================
+
+/node_api/node_modules/
+/node_api/dist/
+/node_api/build/
+/node_api/coverage/
+/node_api/logs/
+/node_api/**/*.log
+/node_api/.idea/
+
+# Backend environment files, including config/.env
+/node_api/**/.env*
+!/node_api/**/.env.example
+
+
+# ==================================
+# FRONTEND — my_notes (Next.js)
+# ==================================
+
+/my_notes/node_modules/
+/my_notes/.next/
+/my_notes/out/
+/my_notes/build/
+/my_notes/coverage/
+/my_notes/.vercel/
+/my_notes/.idea/
+/my_notes/**/*.log
+/my_notes/**/*.tsbuildinfo
+/my_notes/next-env.d.ts
+
+# Frontend environment files
+/my_notes/**/.env*
+!/my_notes/**/.env.example
+
+
+# ==================================
+# ROOT / SHARED
+# ==================================
+
+/.idea/
+/.env*
+!/.env.example
+
+.DS_Store
+Thumbs.db
+

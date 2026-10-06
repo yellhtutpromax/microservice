@@ -1,0 +1,55 @@
+name: note-links
+
+services:
+
+  mongodb:
+    image: mongo:7
+    container_name: note-links-mongodb
+    ports:
+      - "27019:27017"
+    volumes:
+      - mongodb_data:/data/db
+    networks:
+      - mern-app
+
+  api:
+    container_name: note-links-backend
+    build:
+      context: ./node_api
+      dockerfile: Dockerfile
+    env_file: ./node_api/config/.env
+    volumes:
+      - ./node_api:/app
+      - /app/node_modules
+    ports:
+      - "4000:4000"
+    networks:
+      - mern-app
+    command: npx nodemon --legacy-watch index.js
+    restart: unless-stopped
+    depends_on:
+      - mongodb
+
+  frontend:
+    container_name: note-links-frontend
+    build:
+      context: ./my_notes
+      dockerfile: Dockerfile # dev Dockerfile for local work
+    volumes:
+      - ./my_notes:/app
+      - /app/node_modules
+    ports:
+      - "3000:3000"
+    networks:
+      mern-app:
+    depends_on:
+      - api
+    restart: unless-stopped
+
+volumes:
+  mongodb_data:
+
+networks:
+  mern-app:
+    driver: bridge
+
