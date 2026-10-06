@@ -1,0 +1,238 @@
+
+Zepto Finance
+
+const getCountry = async () => {
+    try {
+      const res = await fetch("https://ipapi.co/json/");
+      const data = await res.json();
+      console.log("Your Country:", data.country); // e.g. "AE"
+    } catch (error) {
+      console.error("IP fetch failed", error);
+    }
+  };
+
+Users
+------------------
+CREATE TABLE users (
+  id BIGINT AUTO_INCREMENT PRIMARY KEY,
+  name VARCHAR(50) NOT NULL,
+  email VARCHAR(50) UNIQUE,
+  username VARCHAR(50) UNIQUE,
+  password VARCHAR(255) NOT NULL,
+  email_verify TINYINT(1) DEFAULT 0,
+  from_where VARCHAR(20),
+  balance DECIMAL(14, 2) DEFAULT 0,
+  is_ban TINYINT(1) DEFAULT 0,
+  is_active TINYINT(1) DEFAULT 1,
+  token VARCHAR(255),
+  profile VARCHAR(100),
+  auth_refresh_token VARCHAR(255),
+  last_login_at DATETIME NULL,
+  created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+  updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+
+  -- INDEXES
+  INDEX idx_email (email),
+  INDEX idx_username (username),
+  INDEX idx_is_active (is_active),
+  INDEX idx_is_ban (is_ban),
+  INDEX idx_created_at (created_at)
+);
+
+
+************************
+
+Categories
+------------------
+CREATE TABLE categories (
+  id BIGINT AUTO_INCREMENT PRIMARY KEY,
+  name VARCHAR(255) NOT NULL,
+  level TINYINT NOT NULL,
+  parent_id BIGINT NULL,
+  photo VARCHAR(255),
+  is_private TINYINT(1) DEFAULT 0,
+  is_hide TINYINT(1) DEFAULT 0,
+  is_delete TINYINT(1) DEFAULT 0,
+  token VARCHAR(255),
+  updated_id BIGINT,
+  created_id BIGINT,
+  created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+  updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+
+  -- INDEXES
+  INDEX idx_parent_id (parent_id),
+  INDEX idx_level (level),
+  INDEX idx_name (name),
+  INDEX idx_is_delete (is_delete),
+  INDEX idx_is_hide (is_hide),
+  INDEX idx_token (token)
+);
+
+
+************************
+
+Transactions
+------------------
+
+CREATE TABLE transactions (
+  id BIGINT AUTO_INCREMENT PRIMARY KEY,
+
+  user_id BIGINT NOT NULL,
+  category_id BIGINT NOT NULL,
+
+  type TINYINT NOT NULL CHECK (type IN (1,2)),  -- 1=income, 2=expense
+
+  amount DECIMAL(12,2) NOT NULL,
+  date DATETIME,
+  card_id BIGINT NOT NULL,
+  note TEXT,
+
+  is_delete TINYINT(1) DEFAULT 0,
+
+  created_id BIGINT NOT NULL,
+  updated_id BIGINT,
+
+  created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+  updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+
+  -- INDEXES
+  INDEX idx_user_id (user_id),
+  INDEX idx_category_id (category_id),
+  INDEX idx_type (type),
+  INDEX idx_user_type (user_id, type),   -- FAST filtering by user + income/expense
+  INDEX idx_created_at (created_at),
+  INDEX idx_is_delete (is_delete),
+);
+
+
+************************
+
+Cards
+------------------
+
+CREATE TABLE cards (
+  id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+  user_id BIGINT UNSIGNED NOT NULL,
+  card_type TINYINT NOT NULL COMMENT '1=Visa, 2=MasterCard, 3=Payoneer, 4=PayPal, 5=GiftCard, 6=Other',
+
+  card_name VARCHAR(100) NULL,
+  card_number VARCHAR(30) NULL,
+  holder_name VARCHAR(100) NULL,
+
+  is_active TINYINT(1) DEFAULT 1,
+  is_deleted TINYINT(1) DEFAULT 0,
+
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+
+  INDEX idx_user_id (user_id),
+  INDEX idx_card_type (card_type),
+  INDEX idx_user_type (user_id, card_type),
+  INDEX idx_currency (currency_code),
+
+  FOREIGN KEY (user_id) REFERENCES users(id)
+);
+
+
+************************
+
+Cards Balance
+------------------
+
+CREATE TABLE card_balances (
+  id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+  card_id BIGINT UNSIGNED NOT NULL,
+  country_id BIGINT UNSIGNED NOT NULL,
+  balance DECIMAL(14,2) DEFAULT 0,
+
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+
+  UNIQUE KEY unique_card_currency (card_id, currency_code),
+  INDEX idx_card_id (card_id),
+  INDEX idx_currency (currency_code),
+
+  FOREIGN KEY (card_id) REFERENCES cards(id) ON DELETE CASCADE
+  FOREIGN KEY (country_id) REFERENCES countries(id) ON DELETE CASCADE
+);
+
+
+************************
+
+Countries
+CREATE TABLE countries (
+  id SMALLINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+
+  country_code CHAR(5) NOT NULL COMMENT 'ISO 3166-1 alpha-2 (US, AE, IN)',
+  photo VARCHAR(255) NULL,
+  country_name VARCHAR(50) NOT NULL COMMENT 'United States, UAE, India',
+  currency_symbol VARCHAR(10) NOT NULL,
+  phone_code VARCHAR(10) NULL COMMENT '+1, +971, +91',
+
+  is_active TINYINT(1) DEFAULT 1,
+
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+************************
+
+Transactions
+CREATE TABLE transactions (
+  id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+
+  -- Card and User Reference
+  card_id BIGINT UNSIGNED NOT NULL,
+  user_id BIGINT UNSIGNED NOT NULL,
+
+  -- Transaction Details
+  transaction_type TINYINT NOT NULL COMMENT '1=Income, 2=Expense, 3=Transfer In, 4=Transfer Out',
+  category_id SMALLINT UNSIGNED NULL COMMENT 'Reference to transaction_categories table',
+
+  -- Amount and Currency
+  amount DECIMAL(14,2) NOT NULL,
+  country_id SMALLINT UNSIGNED NOT NULL,
+
+  -- Transaction Info
+  description VARCHAR(255) NULL,
+  transaction_date DATE NOT NULL,
+  merchant_name VARCHAR(100) NULL,
+
+  -- Balance Tracking (snapshot at time of transaction)
+  balance_before DECIMAL(14,2) NULL,
+  balance_after DECIMAL(14,2) NULL,
+
+  -- Metadata
+  notes TEXT NULL,
+  receipt_url VARCHAR(255) NULL,
+  reference_number VARCHAR(50) NULL,
+
+  -- Transfer Related (if type is Transfer)
+  related_transaction_id BIGINT UNSIGNED NULL COMMENT 'Links transfer out to transfer in',
+  to_card_id BIGINT UNSIGNED NULL COMMENT 'Destination card for transfers',
+
+  -- Status
+  is_deleted TINYINT(1) DEFAULT 0,
+
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+
+  -- Indexes
+  INDEX idx_card_id (card_id),
+  INDEX idx_user_id (user_id),
+  INDEX idx_transaction_date (transaction_date),
+  INDEX idx_transaction_type (transaction_type),
+  INDEX idx_category_id (category_id),
+  INDEX idx_country_id (country_id),
+  INDEX idx_user_date (user_id, transaction_date),
+  INDEX idx_card_date (card_id, transaction_date),
+
+  -- Foreign Keys
+  FOREIGN KEY (card_id) REFERENCES cards(id) ON DELETE CASCADE,
+  FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
+  FOREIGN KEY (country_id) REFERENCES countries(id) ON DELETE RESTRICT,
+  FOREIGN KEY (related_transaction_id) REFERENCES transactions(id) ON DELETE SET NULL,
+  FOREIGN KEY (to_card_id) REFERENCES cards(id) ON DELETE SET NULL
+
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
