@@ -12,7 +12,7 @@ services:
     networks:
       - mern-app
 
-  api:
+  backend:
     container_name: note-links-backend
     build:
       context: ./node_api
@@ -43,7 +43,7 @@ services:
     networks:
       mern-app:
     depends_on:
-      - api
+      - backend
     restart: unless-stopped
 
   nginx:
@@ -54,7 +54,7 @@ services:
       - "8080:8080"
     environment:
       PORT: "8080"
-      API_HOST: api
+      API_HOST: backend
       API_PORT: "4000"
 
       FRONTEND_HOST: frontend
@@ -63,7 +63,7 @@ services:
     networks:
       - mern-app
     depends_on:
-      - api
+      - backend
       - frontend
     restart: unless-stopped
 
